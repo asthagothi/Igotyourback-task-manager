@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Delete task | IGotYourBack{% endblock %}
+
+{% block content %}
+<main class="page page-narrow">
+    <section class="panel panel-danger">
+        <h1>Delete this task?</h1>
+        <p class="lede">This removes it from the desk. It cannot be brought back.</p>
+
+        <div class="preview">
+            <p class="preview-title">{{ task.title }}</p>
+            {% if task.description %}
+                <p>{{ task.description|truncatechars:140 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="form-actions">
+            <a href="{% url 'dashboard' %}" class="btn btn-ghost">Keep task</a>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Delete task</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}

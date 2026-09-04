@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Planner | IGotYourBack{% endblock %}
+
+{% block content %}
+<main class="page page-narrow">
+    <header class="page-head">
+        <div>
+            <p class="eyebrow">TaskFlow AI</p>
+            <h1>What do you need done?</h1>
+            <p>The planner reads your current load first, then slots a short sequence around it. You review before anything lands on the desk.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">Dashboard</a>
+    </header>
+
+    <section class="panel">
+        <div class="panel-head">
+            <span class="mark mark-soft" aria-hidden="true">✦</span>
+            <div>
+                <h2>AI Task Planner</h2>
+                <p>Describe the goal, the deadline, or the load on your week.</p>
+            </div>
+            <span class="ready-pill">
+                <span class="status-dot" aria-hidden="true"></span>
+                Ready
+            </span>
+        </div>
+
+        {% if active_tasks %}
+        <aside class="load-strip" aria-label="Current load">
+            <p class="load-kicker">On the plate now</p>
+            <ul class="load-list">
+                {% for task in active_tasks %}
+                <li>
+                    <span class="tag {{ task.priority }}">{{ task.priority }}</span>
+                    <span class="load-title">{{ task.title }}</span>
+                    <span class="load-meta">
+                        {% if task.due_date %}Due {{ task.due_date|date:"M d" }}{% else %}No date{% endif %}
+                        · {{ task.estimated_minutes }} min
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        {% else %}
+        <p class="load-empty">Desk is clear. The plan can use the week as written.</p>
+        {% endif %}
+
+        <form method="post" class="ai-form">
+            {% csrf_token %}
+
+            <div class="form-field">
+                <label for="prompt">What’s on your mind?</label>
+                <textarea
+                    id="prompt"
+                    class="field-control field-area field-area-lg"
+                    name="prompt"
+                    required
+                    placeholder="The goal, the deadline, how much time you have, or what is already in the way."
+                >{{ prompt }}</textarea>
+            </div>
+
+            <div class="quick-row">
+                <span class="quick-label">Try</span>
+                <button type="button" class="chip" data-prompt="Create a study plan for my upcoming exams">Study plan</button>
+                <button type="button" class="chip" data-prompt="Break my project into manageable tasks">Project plan</button>
+                <button type="button" class="chip" data-prompt="Help me organize my tasks for this week">Weekly plan</button>
+            </div>
+
+            <div class="form-actions">
+                <p class="helper">More context makes a tighter plan.</p>
+                <button type="submit" class="btn btn-ink">Generate plan</button>
+            </div>
+        </form>
+    </section>
+
+    {% if error %}
+        <div class="notice notice-error notice-block" role="alert">
+            <strong>The plan did not come through.</strong>
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+
+    {% if tasks %}
+        <section class="plan">
+            <header class="plan-head">
+                <div>
+                    <h2>Your next steps</h2>
+                    <p>A sequence you can add to the desk as written, or edit after.</p>
+                </div>
+                <span class="plan-badge">Generated</span>
+            </header>
+
+            <ol class="plan-list">
+                {% for task in tasks %}
+                    <li class="plan-item">
+                        <span class="plan-index">{{ forloop.counter|stringformat:"02d" }}</span>
+                        <div class="plan-body">
+                            <h3>{{ task.title }}</h3>
+                            <p>{{ task.description }}</p>
+                            <div class="plan-meta">
+                                <span class="priority-block">
+                                    <span class="tag {{ task.priority }}">{{ task.priority }}</span>
+                                    {% if task.priority_reason %}
+                                        <span class="priority-reason">{{ task.priority_reason }}</span>
+                                    {% endif %}
+                                </span>
+                                <span>{{ task.estimated_minutes }} min</span>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ol>
+
+            <div class="plan-save">
+                <div>
+                    <strong>Ready to make this real?</strong>
+                    <p>Add these tasks to the desk as pending work.</p>
+                </div>
+                <form method="post" action="{% url 'save_ai_tasks' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="tasks_json" value="{{ tasks_json }}">
+                    <button type="submit" class="btn btn-ink">Add to dashboard</button>
+                </form>
+            </div>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.querySelectorAll("[data-prompt]").forEach(function (chip) {
+        chip.addEventListener("click", function () {
+            var field = document.getElementById("prompt");
+            field.value = chip.getAttribute("data-prompt");
+            field.focus();
+        });
+    });
+</script>
+{% endblock %}

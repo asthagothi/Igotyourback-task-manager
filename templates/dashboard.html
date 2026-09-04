@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Desk | IGotYourBack{% endblock %}
+
+{% block content %}
+<main class="page">
+    <header class="hero">
+        <div class="hero-copy">
+            <p class="status-pill">
+                <span class="status-dot" aria-hidden="true"></span>
+                Workspace ready
+            </p>
+            <h1 class="wordmark">IGotYourBack.</h1>
+        </div>
+        <div class="hero-actions">
+            <a href="{% url 'ai_assistant' %}" class="btn btn-ink">AI Planner</a>
+            <a href="{% url 'add_task' %}" class="btn btn-ghost">Add task</a>
+        </div>
+    </header>
+
+    <section class="ledger" aria-label="Desk counts">
+        <div class="ledger-cell">
+            <strong>{{ total_tasks }}</strong>
+            <span>Total</span>
+        </div>
+        <div class="ledger-cell">
+            <strong>{{ pending_tasks }}</strong>
+            <span>To do</span>
+        </div>
+        <div class="ledger-cell">
+            <strong>{{ in_progress_tasks }}</strong>
+            <span>Active</span>
+        </div>
+        <div class="ledger-cell">
+            <strong>{{ completed_tasks }}</strong>
+            <span>Completed</span>
+        </div>
+    </section>
+
+    <section class="workspace">
+        <div class="workspace-head">
+            <h2>Your workspace</h2>
+            <p>Focus on what matters next.</p>
+        </div>
+
+        {% if pending_actions %}
+        <aside class="inbox" aria-label="Waiting for approval">
+            <header class="inbox-head">
+                <div>
+                    <h3>Waiting for you</h3>
+                    <p>Drafted, stored. Type the address, then Approve. Calendar still only logs.</p>
+                </div>
+                <ol class="flow" aria-label="Approve-first path">
+                    <li class="flow-step">Drafted</li>
+                    <li class="flow-step is-live">Waiting</li>
+                    <li class="flow-step">Approved</li>
+                    <li class="flow-step">Logged</li>
+                </ol>
+            </header>
+
+            <ul class="inbox-list">
+                {% for action in pending_actions %}
+                <li class="action-card">
+                    <div class="action-copy">
+                        <p class="action-kicker">{{ action.get_action_type_display }} · {{ action.task.title }}</p>
+                        <pre class="action-draft">{{ action.draft_content }}</pre>
+                    </div>
+                    <div class="action-buttons">
+                        <form method="post" action="{% url 'approve_action' action.id %}" class="approve-form">
+                            {% csrf_token %}
+                            {% if action.action_type == "email" %}
+                                <label class="sr-only" for="to-email-{{ action.id }}">Send to</label>
+                                <input
+                                    id="to-email-{{ action.id }}"
+                                    class="field-control field-compact"
+                                    type="email"
+                                    name="to_email"
+                                    required
+                                    placeholder="you@gmail.com"
+                                >
+                            {% endif %}
+                            <button type="submit" class="btn btn-approve btn-compact">Approve</button>
+                        </form>
+                        <a href="{% url 'edit_action' action.id %}" class="btn btn-ghost btn-compact">Edit</a>
+                        <form method="post" action="{% url 'reject_action' action.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-reject btn-compact">Reject</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        {% endif %}
+
+        <form method="get" class="filters" role="search">
+            <label class="sr-only" for="search">Search tasks</label>
+            <input
+                id="search"
+                class="field-control"
+                type="search"
+                name="search"
+                value="{{ search }}"
+                placeholder="Search tasks"
+                autocomplete="off"
+            >
+
+            <label class="sr-only" for="status">Status</label>
+            <select id="status" class="field-control" name="status">
+                <option value="">All status</option>
+                <option value="pending"{% if selected_status == "pending" %} selected{% endif %}>Pending</option>
+                <option value="in_progress"{% if selected_status == "in_progress" %} selected{% endif %}>In progress</option>
+                <option value="completed"{% if selected_status == "completed" %} selected{% endif %}>Completed</option>
+            </select>
+
+            <label class="sr-only" for="priority">Priority</label>
+            <select id="priority" class="field-control" name="priority">
+                <option value="">All priority</option>
+                <option value="low"{% if selected_priority == "low" %} selected{% endif %}>Low</option>
+                <option value="medium"{% if selected_priority == "medium" %} selected{% endif %}>Medium</option>
+                <option value="high"{% if selected_priority == "high" %} selected{% endif %}>High</option>
+            </select>
+
+            <button type="submit" class="btn btn-ink">Filter</button>
+        </form>
+
+        <div class="board">
+            <section class="column">
+                <header class="col-head">
+                    <h3>To do</h3>
+                    <span class="count">{{ pending_list|length }}</span>
+                </header>
+                <div class="column-body">
+                    {% for task in pending_list %}
+                        {% include "partials/task_card.html" with task=task column="todo" %}
+                    {% empty %}
+                        <p class="empty-hint">Nothing waiting. Add a task or ask the planner.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="column column-progress">
+                <header class="col-head">
+                    <h3>In progress</h3>
+                    <span class="count">{{ progress_list|length }}</span>
+                </header>
+                <div class="column-body">
+                    {% for task in progress_list %}
+                        {% include "partials/task_card.html" with task=task column="progress" %}
+                    {% empty %}
+                        <p class="empty-hint">Start a task when you sit down to work.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="column column-done">
+                <header class="col-head">
+                    <h3>Completed</h3>
+                    <span class="count">{{ completed_list|length }}</span>
+                </header>
+                <div class="column-body">
+                    {% for task in completed_list %}
+                        {% include "partials/task_card.html" with task=task column="done" %}
+                    {% empty %}
+                        <p class="empty-hint">Finished work will settle here.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </section>
+</main>
+{% endblock %}

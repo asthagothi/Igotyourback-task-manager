@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Edit draft | IGotYourBack{% endblock %}
+
+{% block content %}
+<main class="page page-narrow">
+    <header class="page-head">
+        <div>
+            <p class="eyebrow">Approve-first</p>
+            <h1>Edit the draft</h1>
+            <p>
+                {% if action.action_type == "email" %}
+                    This is the email draft. Put a real address on the To: line. Save here. Approve on the desk is what sends.
+                {% else %}
+                    This is the calendar draft. Change the wording, then save. Approve on the desk is what logs it.
+                {% endif %}
+            </p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">Back to desk</a>
+    </header>
+
+    <section class="panel">
+        <div class="panel-head">
+            <span class="mark mark-soft" aria-hidden="true">✦</span>
+            <div>
+                <h2>
+                    {% if action.action_type == "email" %}
+                        Email draft
+                    {% else %}
+                        Calendar draft
+                    {% endif %}
+                    for {{ action.task.title|default:"this task" }}
+                </h2>
+                <p>Stored locally. Nothing is sent from this page.</p>
+            </div>
+        </div>
+
+        <form method="post" class="task-form">
+            {% csrf_token %}
+            <div class="form-field">
+                <label for="id_draft_content">Draft</label>
+                <textarea
+                    id="id_draft_content"
+                    name="draft_content"
+                    class="field-control field-area field-area-lg"
+                    rows="10"
+                    required
+                >{{ form.draft_content.value|default:action.draft_content }}</textarea>
+            </div>
+            <div class="form-actions">
+                <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-ink">Save draft</button>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}

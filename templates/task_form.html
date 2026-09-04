@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if edit_mode %}Edit task{% else %}New task{% endif %} | IGotYourBack
+{% endblock %}
+
+{% block content %}
+<main class="page page-narrow">
+    <header class="page-head">
+        <div>
+            <h1>{% if edit_mode %}Edit task{% else %}New task{% endif %}</h1>
+            <p>Turn something on your mind into something you can finish.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">Dashboard</a>
+    </header>
+
+    <section class="panel">
+        <div class="panel-head">
+            <span class="mark mark-soft" aria-hidden="true">✦</span>
+            <div>
+                <h2>{% if edit_mode %}Update your task{% else %}Create a task{% endif %}</h2>
+                <p>Keep it clear, specific, and easy to act on.</p>
+            </div>
+        </div>
+
+        <form method="post" class="task-form">
+            {% csrf_token %}
+
+            <div class="form-field">
+                <label for="{{ form.title.id_for_label }}">Title</label>
+                {{ form.title }}
+                {% if form.title.errors %}
+                    <p class="field-error">{{ form.title.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.description.id_for_label }}">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                    <p class="field-error">{{ form.description.errors|striptags }}</p>
+                {% endif %}
+            </div>
+
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="{{ form.status.id_for_label }}">Status</label>
+                    {{ form.status }}
+                </div>
+                <div class="form-field">
+                    <label for="{{ form.priority.id_for_label }}">Priority</label>
+                    {{ form.priority }}
+                </div>
+                <div class="form-field">
+                    <label for="{{ form.due_date.id_for_label }}">Due date</label>
+                    {{ form.due_date }}
+                </div>
+                <div class="form-field">
+                    <label for="{{ form.estimated_minutes.id_for_label }}">Estimated minutes</label>
+                    {{ form.estimated_minutes }}
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="{{ form.priority_reason.id_for_label }}">Why this priority</label>
+                    {{ form.priority_reason }}
+                    {% if form.priority_reason.errors %}
+                        <p class="field-error">{{ form.priority_reason.errors|striptags }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{% url 'dashboard' %}" class="btn btn-ghost">Cancel</a>
+                {% if edit_mode %}
+                    <a href="{% url 'delete_task' task.id %}" class="btn btn-quiet">Remove</a>
+                {% endif %}
+                <button type="submit" class="btn btn-ink">
+                    {% if edit_mode %}Save changes{% else %}Create task{% endif %}
+                </button>
+            </div>
+        </form>
+    </section>
+</main>
+{% endblock %}

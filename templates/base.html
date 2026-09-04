@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}IGotYourBack{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+        rel="stylesheet"
+    >
+    <link
+        rel="stylesheet"
+        href="{% static 'css/style.css' %}?v={{ css_version|default:'20260908' }}"
+    >
+</head>
+<body>
+    <div class="shell">
+        <aside class="rail" aria-label="Desk navigation">
+            <a class="rail-brand" href="{% url 'dashboard' %}">
+                <span class="mark" aria-hidden="true">✦</span>
+                <span class="rail-brand-copy">
+                    <span class="rail-name">IGotYourBack</span>
+                    <span class="rail-role">Personal desk</span>
+                </span>
+            </a>
+
+            <nav class="rail-nav">
+                <a
+                    href="{% url 'dashboard' %}"
+                    class="rail-link{% if nav == 'dashboard' %} is-current{% endif %}"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                    Desk
+                    {% if waiting_actions %}
+                        <span class="rail-badge">{{ waiting_actions }}</span>
+                    {% endif %}
+                </a>
+                <a
+                    href="{% url 'ai_assistant' %}"
+                    class="rail-link{% if nav == 'ai_assistant' %} is-current{% endif %}"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.2 5.2L18 9.5l-4.8 1.3L12 16l-1.2-5.2L6 9.5l4.8-1.3L12 3z"/><path d="M19 15l.6 2.4L22 18l-2.4.6L19 21l-.6-2.4L16 18l2.4-.6L19 15z"/></svg>
+                    Planner
+                </a>
+                <a
+                    href="{% url 'add_task' %}"
+                    class="rail-link{% if nav == 'add_task' %} is-current{% endif %}"
+                >
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                    New task
+                </a>
+            </nav>
+
+            <div class="spine" aria-label="Workflow">
+                <div class="vert{% if spine_phase == 'plan' %} is-live{% endif %}">
+                    <span class="node"></span>
+                    <span class="time">Plan</span>
+                </div>
+                <div class="vert{% if spine_phase == 'now' %} is-live now{% endif %}">
+                    <span class="node"></span>
+                    <span class="time">Now</span>
+                </div>
+                <div class="vert{% if spine_phase == 'next' %} is-live{% endif %}">
+                    <span class="node"></span>
+                    <span class="time">Next</span>
+                </div>
+                <div class="vert{% if spine_phase == 'done' %} is-live done{% endif %}">
+                    <span class="node"></span>
+                    <span class="time">Done</span>
+                </div>
+            </div>
+
+            <p class="rail-foot">Hold the work. Move one thing.</p>
+        </aside>
+
+        <div class="stage">
+            <header class="mobile-bar">
+                <a class="mobile-brand" href="{% url 'dashboard' %}">
+                    <span class="mark" aria-hidden="true">✦</span>
+                    IGotYourBack
+                </a>
+                <div class="mobile-actions">
+                    <a href="{% url 'ai_assistant' %}" class="btn btn-ghost btn-compact">Planner</a>
+                    <a href="{% url 'add_task' %}" class="btn btn-ink btn-compact">Add task</a>
+                </div>
+            </header>
+
+            {% if messages %}
+                <div class="notices" role="status">
+                    {% for message in messages %}
+                        <p class="notice notice-{{ message.tags }}">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
