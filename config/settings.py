@@ -96,20 +96,36 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-if ON_VERCEL:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": "/tmp/db.sqlite3",
+
+def _databases():
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if url:
+        import dj_database_url
+
+        ssl = os.getenv("DATABASE_SSL", "true").lower() == "true"
+        return {
+            "default": dj_database_url.parse(
+                url,
+                conn_max_age=0,
+                ssl_require=ssl,
+            )
         }
-    }
-else:
-    DATABASES = {
+    if ON_VERCEL:
+        return {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": "/tmp/db.sqlite3",
+            }
+        }
+    return {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
+DATABASES = _databases()
 
 AUTH_PASSWORD_VALIDATORS = [
     {
