@@ -139,6 +139,7 @@ def delete_task(request, task_id):
     return render(request, "delete_confirm.html", {"task": task})
 
 
+@require_POST
 def complete_task(request, task_id):
     task = get_object_or_404(Task, pk=task_id)
     task.status = "completed"
@@ -147,6 +148,7 @@ def complete_task(request, task_id):
     return redirect("dashboard")
 
 
+@require_POST
 def start_task(request, task_id):
     task = get_object_or_404(Task, pk=task_id)
     task.status = "in_progress"

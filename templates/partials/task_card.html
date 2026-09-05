@@ -33,10 +33,16 @@
 
     <div class="card-actions">
         {% if column == "todo" %}
-            <a href="{% url 'start_task' task.id %}" class="btn btn-ink btn-compact">Start — move to Active</a>
+            <form method="post" action="{% url 'start_task' task.id %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ink btn-compact">Start — move to Active</button>
+            </form>
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>
         {% elif column == "progress" %}
-            <a href="{% url 'complete_task' task.id %}" class="btn btn-ink btn-compact">Complete</a>
+            <form method="post" action="{% url 'complete_task' task.id %}" class="inline-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ink btn-compact">Complete</button>
+            </form>
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>
         {% else %}
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>

@@ -18,9 +18,25 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-l^58)5og*j(#w$tbb=vwl6p6+hn$rqn=sn40+e#3ao!xhu2=*x'
+ON_VERCEL = bool(os.environ.get("VERCEL"))
 
-DEBUG = True
+SECRET_KEY = (
+    os.getenv("DJANGO_SECRET_KEY")
+    or os.getenv("SECRET_KEY")
+    or (
+        ""
+        if ON_VERCEL
+        else "dev-only-igotyoursback-change-me-before-any-real-deploy"
+    )
+)
+if not SECRET_KEY:
+    raise RuntimeError("Set DJANGO_SECRET_KEY (or SECRET_KEY) in the environment.")
+
+_debug = os.getenv("DJANGO_DEBUG", os.getenv("DEBUG", ""))
+if _debug:
+    DEBUG = _debug.lower() == "true"
+else:
+    DEBUG = not ON_VERCEL
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -35,13 +51,13 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'tasks',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "tasks",
 ]
 
 MIDDLEWARE = [
@@ -60,8 +76,7 @@ try:
 except ImportError:
     pass
 
-
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
@@ -79,9 +94,9 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
 
-if os.environ.get("VERCEL"):
+if ON_VERCEL:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -98,43 +113,48 @@ else:
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
-
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
 USE_I18N = True
-
 USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-if os.environ.get("VERCEL"):
+if ON_VERCEL:
     STATIC_ROOT = "/tmp/staticfiles"
 else:
     STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "IGotYourBack <desk@localhost>",
+)
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-CSS_VERSION = os.getenv("CSS_VERSION", "20260908")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+CSS_VERSION = os.getenv("CSS_VERSION", "20260910")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
