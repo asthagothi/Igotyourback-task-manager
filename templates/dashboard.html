@@ -13,7 +13,8 @@
             <h1 class="wordmark">IGotYourBack.</h1>
         </div>
         <div class="hero-actions">
-            <a href="{% url 'ai_assistant' %}" class="btn btn-ink">AI Planner</a>
+            <a href="{% url 'plan_my_day' %}" class="btn btn-ink">Plan my day</a>
+            <a href="{% url 'ai_assistant' %}" class="btn btn-ghost">Break down a goal</a>
             <a href="{% url 'add_task' %}" class="btn btn-ghost">Add task</a>
         </div>
     </header>
@@ -40,15 +41,24 @@
     <section class="workspace">
         <div class="workspace-head">
             <h2>Your workspace</h2>
-            <p>Focus on what matters next.</p>
+            <p>To do → Start → In progress → Complete. Remove on a done card asks you to confirm.</p>
         </div>
+
+        {% if day_items %}
+        <aside class="today-strip" aria-label="Today’s suggested order">
+            <p class="today-kicker">Next sitting</p>
+            <p class="today-title">{{ day_items.0.title }}</p>
+            <p class="today-meta">{{ day_items|length }} in today’s stack · {{ day_minutes }} min · no-date work waits behind dated work</p>
+            <a href="{% url 'plan_my_day' %}" class="btn btn-ghost btn-compact">See the full day</a>
+        </aside>
+        {% endif %}
 
         {% if pending_actions %}
         <aside class="inbox" aria-label="Waiting for approval">
             <header class="inbox-head">
                 <div>
                     <h3>Waiting for you</h3>
-                    <p>Drafted, stored. Type the address, then Approve. Calendar still only logs.</p>
+                    <p>Drafted, stored, nothing sent. Approve is the only step that logs the intended call.</p>
                 </div>
                 <ol class="flow" aria-label="Approve-first path">
                     <li class="flow-step">Drafted</li>
@@ -94,34 +104,45 @@
         {% endif %}
 
         <form method="get" class="filters" role="search">
-            <label class="sr-only" for="search">Search tasks</label>
-            <input
-                id="search"
-                class="field-control"
-                type="search"
-                name="search"
-                value="{{ search }}"
-                placeholder="Search tasks"
-                autocomplete="off"
-            >
+            <div class="filter-field">
+                <label for="search">Search</label>
+                <input
+                    id="search"
+                    class="field-control"
+                    type="search"
+                    name="search"
+                    value="{{ search }}"
+                    placeholder="Title or notes"
+                    autocomplete="off"
+                >
+            </div>
 
-            <label class="sr-only" for="status">Status</label>
-            <select id="status" class="field-control" name="status">
-                <option value="">All status</option>
-                <option value="pending"{% if selected_status == "pending" %} selected{% endif %}>Pending</option>
-                <option value="in_progress"{% if selected_status == "in_progress" %} selected{% endif %}>In progress</option>
-                <option value="completed"{% if selected_status == "completed" %} selected{% endif %}>Completed</option>
-            </select>
+            <div class="filter-field">
+                <label for="status">Status</label>
+                <select id="status" class="field-control" name="status">
+                    <option value="">All status</option>
+                    <option value="pending"{% if selected_status == "pending" %} selected{% endif %}>To do</option>
+                    <option value="in_progress"{% if selected_status == "in_progress" %} selected{% endif %}>In progress</option>
+                    <option value="completed"{% if selected_status == "completed" %} selected{% endif %}>Completed</option>
+                </select>
+            </div>
 
-            <label class="sr-only" for="priority">Priority</label>
-            <select id="priority" class="field-control" name="priority">
-                <option value="">All priority</option>
-                <option value="low"{% if selected_priority == "low" %} selected{% endif %}>Low</option>
-                <option value="medium"{% if selected_priority == "medium" %} selected{% endif %}>Medium</option>
-                <option value="high"{% if selected_priority == "high" %} selected{% endif %}>High</option>
-            </select>
+            <div class="filter-field">
+                <label for="priority">Priority</label>
+                <select id="priority" class="field-control" name="priority">
+                    <option value="">All priority</option>
+                    <option value="low"{% if selected_priority == "low" %} selected{% endif %}>Low</option>
+                    <option value="medium"{% if selected_priority == "medium" %} selected{% endif %}>Medium</option>
+                    <option value="high"{% if selected_priority == "high" %} selected{% endif %}>High</option>
+                </select>
+            </div>
 
-            <button type="submit" class="btn btn-ink">Filter</button>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-ink">Apply</button>
+                {% if is_filtered %}
+                    <a href="{% url 'dashboard' %}" class="btn btn-ghost">Clear</a>
+                {% endif %}
+            </div>
         </form>
 
         <div class="board">
@@ -134,7 +155,13 @@
                     {% for task in pending_list %}
                         {% include "partials/task_card.html" with task=task column="todo" %}
                     {% empty %}
-                        <p class="empty-hint">Nothing waiting. Add a task or ask the planner.</p>
+                        <p class="empty-hint">
+                            {% if is_filtered %}
+                                Nothing here matches.
+                            {% else %}
+                                Nothing waiting. Add a task or ask the planner.
+                            {% endif %}
+                        </p>
                     {% endfor %}
                 </div>
             </section>
@@ -148,7 +175,13 @@
                     {% for task in progress_list %}
                         {% include "partials/task_card.html" with task=task column="progress" %}
                     {% empty %}
-                        <p class="empty-hint">Start a task when you sit down to work.</p>
+                        <p class="empty-hint">
+                            {% if is_filtered %}
+                                Nothing here matches.
+                            {% else %}
+                                Start a task when you sit down to work.
+                            {% endif %}
+                        </p>
                     {% endfor %}
                 </div>
             </section>
@@ -162,7 +195,13 @@
                     {% for task in completed_list %}
                         {% include "partials/task_card.html" with task=task column="done" %}
                     {% empty %}
-                        <p class="empty-hint">Finished work will settle here.</p>
+                        <p class="empty-hint">
+                            {% if is_filtered %}
+                                Nothing here matches.
+                            {% else %}
+                                Finished work will settle here.
+                            {% endif %}
+                        </p>
                     {% endfor %}
                 </div>
             </section>

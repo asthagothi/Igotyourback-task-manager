@@ -61,10 +61,10 @@ def send_action_email(draft_content):
     to, subject, body = parse_email_draft(draft_content)
     if to.lower() in PLACEHOLDERS or "@" not in to:
         raise EmailDraftError(
-            "Type a real address in Send to, then approve."
+            "Edit the draft and put a real address on the To: line before you approve."
         )
     if not subject:
-        raise EmailDraftError("The draft needs a Subject: line.")
+        raise EmailDraftError("Edit the draft and add a Subject: line before you approve.")
     if not body:
         body = subject
 

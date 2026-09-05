@@ -7,34 +7,30 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tasks', '0001_initial'),
+        ("tasks", "0001_initial"),
     ]
 
     operations = [
-        migrations.AlterModelOptions(
-            name='task',
-            options={'ordering': ['-created_at']},
-        ),
         migrations.AddField(
-            model_name='task',
-            name='priority_reason',
+            model_name="task",
+            name="priority_reason",
             field=models.CharField(blank=True, max_length=180),
         ),
         migrations.CreateModel(
-            name='PendingAction',
+            name="PendingAction",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action_type', models.CharField(choices=[('calendar', 'Calendar event'), ('email', 'Email')], max_length=20)),
-                ('draft_content', models.TextField()),
-                ('status', models.CharField(choices=[('pending', 'Pending approval'), ('approved', 'Approved'), ('rejected', 'Rejected')], default='pending', max_length=20)),
-                ('execution_log', models.TextField(blank=True)),
-                ('executed_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('task', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='tasks.task')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("action_type", models.CharField(choices=[("calendar", "Calendar event"), ("email", "Email")], max_length=20)),
+                ("draft_content", models.TextField()),
+                ("status", models.CharField(choices=[("pending", "Pending approval"), ("approved", "Approved"), ("rejected", "Rejected")], default="pending", max_length=20)),
+                ("execution_log", models.TextField(blank=True)),
+                ("executed_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("task", models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name="actions", to="tasks.task")),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
     ]

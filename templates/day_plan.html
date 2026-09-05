@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Plan my day | IGotYourBack{% endblock %}
+
+{% block content %}
+<main class="page page-narrow">
+    <header class="page-head">
+        <div>
+            <p class="eyebrow">AI Planner</p>
+            <h1>Plan my day</h1>
+            <p>Open work, ranked for today: finish what is already active, then dated high items. No-date work waits. You accept before anything moves.</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost">Back to desk</a>
+    </header>
+
+    {% if day_items %}
+    <section class="plan">
+        <header class="plan-head">
+            <div>
+                <h2>Today’s sittings</h2>
+                <p>{{ day_items|length }} items · about {{ day_minutes }} minutes</p>
+            </div>
+            <span class="plan-badge">Proposed</span>
+        </header>
+
+        <ol class="plan-list">
+            {% for item in day_items %}
+            <li class="plan-item">
+                <span class="plan-index">{{ forloop.counter|stringformat:"02d" }}</span>
+                <div class="plan-body">
+                    <h3>{{ item.title }}</h3>
+                    <p>{{ item.why }}</p>
+                    <div class="plan-meta">
+                        <span class="tag {{ item.priority }}">{{ item.priority }}</span>
+                        <span>{{ item.estimated_minutes }} min</span>
+                        {% if item.due_date %}
+                            <span>Due {{ item.due_date|date:"M d" }}</span>
+                        {% else %}
+                            <span>No deadline — after dated work</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+
+        <div class="plan-save">
+            <div>
+                <strong>Accept this order?</strong>
+                <p>Starts the first sitting. The rest stay in To do, in this sequence.</p>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ink">Accept and start the first</button>
+            </form>
+        </div>
+    </section>
+    {% else %}
+    <section class="panel">
+        <h2>Desk is clear</h2>
+        <p class="lede">Generate a plan from a goal, or add a task, then come back.</p>
+        <div class="form-actions">
+            <a href="{% url 'ai_assistant' %}" class="btn btn-ink">Break down a goal</a>
+        </div>
+    </section>
+    {% endif %}
+</main>
+{% endblock %}

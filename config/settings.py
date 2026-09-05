@@ -52,7 +52,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    # ... leave the rest as it is
 ]
+
 
 ROOT_URLCONF = 'config.urls'
 
@@ -112,8 +117,12 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+if os.environ.get("VERCEL"):
+    STATIC_ROOT = "/tmp/staticfiles"
+else:
+    STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MAILERS = {
     'default': {

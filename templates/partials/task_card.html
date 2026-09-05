@@ -15,7 +15,7 @@
             {% elif task.due_date %}
                 Due {{ task.due_date|date:"M d" }}
             {% else %}
-                No deadline
+                No deadline — ranks after dated work
             {% endif %}
         </span>
         <span>{{ task.estimated_minutes }} min</span>
@@ -33,26 +33,29 @@
 
     <div class="card-actions">
         {% if column == "todo" %}
-            <a href="{% url 'start_task' task.id %}" class="btn btn-ink btn-compact">Start</a>
+            <a href="{% url 'start_task' task.id %}" class="btn btn-ink btn-compact">Start — move to Active</a>
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>
         {% elif column == "progress" %}
             <a href="{% url 'complete_task' task.id %}" class="btn btn-ink btn-compact">Complete</a>
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>
         {% else %}
             <a href="{% url 'edit_task' task.id %}" class="btn btn-ghost btn-compact">Edit</a>
-            <a href="{% url 'delete_task' task.id %}" class="btn btn-quiet btn-compact">Remove</a>
+            <a href="{% url 'delete_task' task.id %}" class="btn btn-quiet btn-compact">Remove…</a>
         {% endif %}
     </div>
 
     {% if column != "done" %}
     <form method="post" action="{% url 'draft_action' task.id %}" class="draft-form">
         {% csrf_token %}
-        <label class="sr-only" for="action-type-{{ task.id }}">Draft type</label>
-        <select id="action-type-{{ task.id }}" class="field-control field-compact" name="action_type">
-            <option value="calendar">Calendar</option>
-            <option value="email">Email</option>
-        </select>
-        <button type="submit" class="btn btn-ghost btn-compact">Draft</button>
+        <p class="draft-hint">Write a calendar event or email. Nothing is sent until you approve it on the desk.</p>
+        <label class="draft-label" for="action-type-{{ task.id }}">What to draft</label>
+        <div class="draft-row">
+            <select id="action-type-{{ task.id }}" class="field-control field-compact" name="action_type">
+                <option value="email">Email</option>
+                <option value="calendar">Calendar</option>
+            </select>
+            <button type="submit" class="btn btn-ghost btn-compact">Create draft</button>
+        </div>
     </form>
     {% endif %}
 </article>

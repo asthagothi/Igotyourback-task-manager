@@ -19,5 +19,6 @@ application = get_wsgi_application()
 if os.environ.get("VERCEL"):
     try:
         call_command("migrate", interactive=False)
+        call_command("collectstatic", interactive=False, verbosity=0)
     except Exception:
         pass

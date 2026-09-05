@@ -1,9 +1,11 @@
 import json
 import logging
 import re
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.db.models import Case, F, IntegerField, Value, When
+from django.utils import timezone
 
 from .models import Task
 
@@ -24,6 +26,7 @@ PRIORITY_ORDER = Case(
 
 
 def get_active_tasks():
+    """Pending and in-progress work, high priority and sooner due dates first."""
     return list(
         Task.objects.filter(status__in=["pending", "in_progress"])
         .annotate(_rank=PRIORITY_ORDER)
@@ -60,6 +63,56 @@ def generate_task_plan(goal, client_factory=None, active_tasks=None):
             logger.exception("Gemini planner failed; using a local plan.")
 
     return _local_plan(goal, active_tasks)
+
+
+def build_daily_plan(active=None, cap_minutes=180, limit=4):
+    """In progress, then dated work, then no-date work. Priority inside each group."""
+    if active is None:
+        active = list(
+            Task.objects.filter(status__in=["pending", "in_progress"])
+        )
+    rank = {"high": 0, "medium": 1, "low": 2}
+    in_progress = sorted(
+        [task for task in active if task.status == "in_progress"],
+        key=lambda task: (rank.get(task.priority, 2), task.id),
+    )
+    dated = sorted(
+        [task for task in active if task.status == "pending" and task.due_date],
+        key=lambda task: (rank.get(task.priority, 2), task.due_date, task.id),
+    )
+    undated = sorted(
+        [task for task in active if task.status == "pending" and not task.due_date],
+        key=lambda task: (rank.get(task.priority, 2), task.id),
+    )
+    picked = []
+    used = 0
+    for task in in_progress:
+        picked.append(_day_item(task, "already open — finish this sitting first"))
+        used += task.estimated_minutes
+    for task in dated + undated:
+        if len(picked) >= limit:
+            break
+        if picked and used + task.estimated_minutes > cap_minutes:
+            break
+        if task.due_date:
+            why = f"due {task.due_date.isoformat()} · {task.priority}"
+        else:
+            why = "no date — after dated work"
+        picked.append(_day_item(task, why))
+        used += task.estimated_minutes
+    return picked, used
+
+
+def _day_item(task, why):
+    return {
+        "id": task.id,
+        "title": task.title,
+        "priority": task.priority,
+        "estimated_minutes": task.estimated_minutes,
+        "due_date": task.due_date,
+        "status": task.status,
+        "why": why,
+    }
 
 
 def draft_action_content(task, action_type="calendar"):
@@ -102,25 +155,31 @@ The user wants to accomplish this goal:
 
 {goal}
 
-Break this goal into practical, actionable tasks.
+Break this goal into 4 to 6 distinct sittings.
+
+Each title must name a different action (clarify, list, draft, review, send).
+Do not repeat the goal sentence in every title.
+Do not create near-duplicate tasks.
 
 Return ONLY valid JSON.
 Do not use markdown.
 Do not use code fences.
 
-Return an array containing 3 to 7 task objects.
+Return an array of task objects.
 
 Each object must contain exactly these fields:
 
 {{
-    "title": "Short task title",
-    "description": "Brief description of what to do",
+    "title": "Short action title without repeating the whole goal",
+    "description": "What done looks like for this sitting only",
     "priority": "low",
-    "priority_reason": "one line why this rank, e.g. due in 2 days and blocks other work",
-    "estimated_minutes": 30
+    "priority_reason": "one line why this rank",
+    "estimated_minutes": 30,
+    "due_date": "2026-09-08"
 }}
 
-Always output priority and priority_reason as a pair. Never priority alone.
+due_date must be YYYY-MM-DD, staggered across the next two weeks.
+Always output priority and priority_reason as a pair.
 
 Priority must be exactly one of:
 low
@@ -192,17 +251,26 @@ def _normalize(item):
         item.get("priority_reason") or item.get("reason") or ""
     ).strip()[:180]
 
+    due_raw = str(item.get("due_date") or "").strip()[:10]
+    due_date = None
+    if due_raw:
+        try:
+            due_date = date.fromisoformat(due_raw).isoformat()
+        except ValueError:
+            due_date = None
+
     return {
         "title": title or "Untitled task",
         "description": description,
         "priority": priority,
         "priority_reason": reason,
         "estimated_minutes": max(1, minutes),
+        "due_date": due_date,
     }
 
 
 def _local_plan(goal, active_tasks=None):
-    short = goal if len(goal) < 72 else f"{goal[:69].rstrip()}…"
+    today = timezone.localdate()
     load = active_tasks or []
     high_open = sum(1 for task in load if task.priority == "high")
     if high_open:
@@ -214,38 +282,43 @@ def _local_plan(goal, active_tasks=None):
 
     return [
         {
-            "title": f"Clarify the outcome for: {short}",
-            "description": f"Write one sentence for what done means: {goal}",
+            "title": "Write the outcome sentence",
+            "description": f"One sentence for what done means: {goal}",
             "priority": "high",
             "priority_reason": first_reason,
             "estimated_minutes": 20,
+            "due_date": today.isoformat(),
         },
         {
-            "title": "List the constraints",
-            "description": "Note the deadline, available hours, and the current load.",
+            "title": "Name the constraints",
+            "description": "Deadline, available hours, and what is already on the plate.",
             "priority": "medium",
             "priority_reason": later_reason,
             "estimated_minutes": 15,
+            "due_date": (today + timedelta(days=1)).isoformat(),
         },
         {
-            "title": f"Break this into sittings: {short}",
-            "description": "Split the goal into 3–5 sittings you can finish in one pass each.",
+            "title": "Cut the work into sittings",
+            "description": f"Three sittings that finish {goal} without repeating this title.",
             "priority": "high",
             "priority_reason": first_reason,
             "estimated_minutes": 30,
+            "due_date": (today + timedelta(days=2)).isoformat(),
         },
         {
-            "title": "Do the first sitting",
-            "description": f"Start the smallest piece that unblocks the rest of: {short}",
+            "title": "Do sitting one",
+            "description": "The smallest piece that unblocks the rest.",
             "priority": "high",
             "priority_reason": "this is the sitting that moves the pile",
             "estimated_minutes": 45,
+            "due_date": (today + timedelta(days=3)).isoformat(),
         },
         {
-            "title": "Review and close",
+            "title": "Close the loop",
             "description": "Check the outcome sentence. Keep leftover work as its own task or drop it.",
             "priority": "medium",
             "priority_reason": later_reason,
             "estimated_minutes": 20,
+            "due_date": (today + timedelta(days=7)).isoformat(),
         },
     ]

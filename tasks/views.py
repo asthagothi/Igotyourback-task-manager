@@ -6,11 +6,17 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from .ai_service import draft_action_content, generate_task_plan, get_active_tasks
-from .email_service import EmailDraftError
+from datetime import date
+
+from .ai_service import (
+    build_daily_plan,
+    draft_action_content,
+    generate_task_plan,
+    get_active_tasks,
+)
+from .email_service import EmailDraftError, set_to_line
 from .forms import ActionDraftForm, ActionTypeForm, TaskForm
 from .models import PendingAction, Task
-from .email_service import EmailDraftError, set_to_line
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +73,11 @@ def dashboard(request):
         tasks = tasks.filter(priority=selected_priority)
 
     counts = _desk_counts()
+    day_items, day_minutes = build_daily_plan()
     context = {
         **counts,
+        "day_items": day_items,
+        "day_minutes": day_minutes,
         "tasks": tasks,
         "pending_list": tasks.filter(status="pending"),
         "progress_list": tasks.filter(status="in_progress"),
@@ -230,6 +239,13 @@ def save_ai_tasks(request):
         reason = str(
             item.get("priority_reason") or item.get("reason") or ""
         ).strip()[:180]
+        due = None
+        raw_due = str(item.get("due_date") or "").strip()[:10]
+        if raw_due:
+            try:
+                due = date.fromisoformat(raw_due)
+            except ValueError:
+                due = None
         created.append(
             Task.objects.create(
                 title=title,
@@ -237,6 +253,7 @@ def save_ai_tasks(request):
                 priority=priority,
                 priority_reason=reason,
                 estimated_minutes=max(1, minutes),
+                due_date=due,
                 status="pending",
             )
         )
@@ -259,6 +276,38 @@ def save_ai_tasks(request):
     else:
         messages.success(request, f"{len(created)} tasks added to your desk.")
     return redirect("dashboard")
+
+
+def plan_my_day(request):
+    items, minutes = build_daily_plan()
+    if request.method == "POST":
+        if not items:
+            messages.info(request, "Nothing open to plan. Add a task or generate a plan.")
+            return redirect("ai_assistant")
+        first = get_object_or_404(Task, pk=items[0]["id"])
+        if first.status == "pending":
+            first.status = "in_progress"
+            first.save(update_fields=["status", "updated_at"])
+            messages.success(
+                request,
+                f"Day accepted. Started: {first.title}. The rest stay in To do, in this order.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Day accepted. Keep going on: {first.title}.",
+            )
+        return redirect("dashboard")
+
+    return render(
+        request,
+        "day_plan.html",
+        {
+            "day_items": items,
+            "day_minutes": minutes,
+            "active_tasks": get_active_tasks(),
+        },
+    )
 
 
 @require_POST
@@ -299,18 +348,21 @@ def edit_action(request, action_id):
         return redirect("dashboard")
 
     if request.method == "POST":
-        form = ActionDraftForm(request.POST, instance=action)
-        if form.is_valid():
-            form.save()
+        content = (request.POST.get("draft_content") or "").strip()
+        recipient = (request.POST.get("to_email") or "").strip()
+        if recipient:
+            content = set_to_line(content or action.draft_content, recipient)
+        if not content:
+            messages.error(request, "The draft cannot be empty.")
+        else:
+            action.draft_content = content
+            action.save(update_fields=["draft_content", "updated_at"])
             messages.success(request, "Draft updated. Still waiting for your approve.")
             return redirect("dashboard")
-    else:
-        form = ActionDraftForm(instance=action)
 
-    return render(request, "action_form.html", {"form": form, "action": action})
+    return render(request, "action_form.html", {"action": action})
 
 
-@require_POST
 @require_POST
 def approve_action(request, action_id):
     action = get_object_or_404(PendingAction, pk=action_id)
@@ -336,11 +388,13 @@ def approve_action(request, action_id):
     if action.action_type == "email":
         messages.success(
             request,
-            "Approved. Email handed to Django. Check the runserver terminal.",
+            "Approved. Email handed to Django. "
+            "On the console backend it prints in the runserver terminal — nothing leaves the machine.",
         )
     else:
         messages.success(request, "Approved. Logged the intended call — nothing was sent.")
     return redirect("dashboard")
+
 
 @require_POST
 def reject_action(request, action_id):
